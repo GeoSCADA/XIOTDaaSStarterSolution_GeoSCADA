@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28010.2036
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{ABE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XIOTDaaSStarterSolution_GeoSCADA", "XIOTDaaSStarterSolution_GeoSCADA\XIOTDaaSStarterSolution_GeoSCADA.csproj", "{AB7D1965-BC6F-47FD-98EF-F2FCF2F250FD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AB7D1965-BC6F-47FD-98EF-F2FCF2F250FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AB7D1965-BC6F-47FD-98EF-F2FCF2F250FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AB7D1965-BC6F-47FD-98EF-F2FCF2F250FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AB7D1965-BC6F-47FD-98EF-F2FCF2F250FD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AB7FD608-4A3E-486D-9AB0-7AB11224FE55}
+	EndGlobalSection
+EndGlobal
