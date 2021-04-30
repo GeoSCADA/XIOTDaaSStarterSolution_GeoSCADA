@@ -51,17 +51,25 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
         /// <summary>
         /// setUpQueueConnection: does all required intial setup of Service Bus connection
         /// </summary>
-        static void SetUpQueueConnection()
+        static bool SetUpQueueConnection()
         {
-            //opening the connection of Service Bus
-            var builder = new ServiceBusConnectionStringBuilder(ServiceBusConnectionString);
-            queueClient = new QueueClient(builder);
+            try
+            {
+                //opening the connection of Service Bus
+                var builder = new ServiceBusConnectionStringBuilder(ServiceBusConnectionString);
+                queueClient = new QueueClient(builder);
+            } catch (Exception e)
+			{
+                Console.WriteLine("Queue Connection Fault: " + e.Message);
+                return false;
+			}
+            return true;
         }
 
         /// <summary>
         /// Setup: do the all required intial Setup (setup the connection of Service Bus and Geo SCADA)
         /// </summary>
-        static void SetUpGeoSCADAConnection()
+        static bool SetUpGeoSCADAConnection()
         {
             // The arguments here will specify your server by its IP address and port. These are the defaults for local use.
             ClearScada.Client.ServerNode node = new ClearScada.Client.ServerNode(ClearScada.Client.ConnectionType.Standard, GeoSCADAnode, GeoSCADAport);
@@ -72,12 +80,12 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
             catch (CommunicationsException)
             {
                 Console.WriteLine("Unable to communicate with Geo SCADA server.");
-                return;
+                return false;
             }
             if (!connection.IsConnected)
             {
                 Console.WriteLine("Not connected to Geo SCADA server.");
-                return;
+                return false;
             }
             using (var spassword = new System.Security.SecureString())
             {
@@ -92,14 +100,15 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
                 catch (AccessDeniedException)
                 {
                     Console.WriteLine("Access denied, incorrect user Id or password");
-                    return;
+                    return false;
                 }
                 catch (PasswordExpiredException)
                 {
                     Console.WriteLine("Credentials expired.");
-                    return;
+                    return false;
                 }
             }
+            return true;
         }
 
 
@@ -150,7 +159,6 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
             queueClient.RegisterMessageHandler(Transform, messageHandlerOptions);
 
             Console.ReadLine();
-            Console.ReadKey();
         }
 
         /// <summary>
@@ -177,13 +185,17 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
                 //case 32:
                     //dynamic Tag = JsonConvert.DeserializeObject<dynamic>(message);
                     //break;
-                //case 48:
-                    //var Tag48 = JsonConvert.DeserializeObject<dynamic>(Encoding.UTF8.GetString(message.Body));
-                    //Load<dynamic>(Tag48);
-                    //break;
-                case 64:
-                    var Tag64 = JsonConvert.DeserializeObject<TAGModel>(Encoding.UTF8.GetString(message.Body));
-                    Load<TAGModel>(Tag64);
+                case 48: // Most fields except switch data
+                    var Tag48 = JsonConvert.DeserializeObject<TAGModel48>(Encoding.UTF8.GetString(message.Body));
+                    Load<TAGModel48>(Tag48);
+                    break;
+                case 64: // Includes all data fields
+                    var Tag64 = JsonConvert.DeserializeObject<TAGModel64>(Encoding.UTF8.GetString(message.Body));
+                    Load<TAGModel64>(Tag64);
+                    break;
+                case 255: // Includes only lat and long, and device (but not station)
+                    var Tag255 = JsonConvert.DeserializeObject<TAGModel255>(Encoding.UTF8.GetString(message.Body));
+                    Load<TAGModel255>(Tag255);
                     break;
                 default:
                     Console.WriteLine($"Message Type {recordType} Not Supported");
@@ -203,6 +215,7 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
         {
 
             #region sampleTag
+            // Tag64 format with all fields.
             /* {
                 "device": "88AC1A",
                 "time": "2018-09-28T13:56:31",
@@ -283,11 +296,9 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
                 Console.WriteLine( $"Cannot parse time: {time}");
 			}
 
-            // XIOT devices are identified uniquely by a "device" property, but this is a non-friendly name.
-            // The "station" property of the XIOT device can be used as a friendly name.
-            // We will use the "device" property and a fixed prefix "TagBase" to construct a group name, but if not found
-            // will try to use the "device" name instead.
-            // e.g. "My XIOT Devices.326D" then "My XIOT Devices.88AC1A"
+            // XIOT devices are identified uniquely by a "device" property.
+            // We will use the "device" property and a fixed prefix "TagBase" to construct a group name.
+            // e.g. "My XIOT Devices.88AC1A"
             // Then add the tag property as the point name (analog, digital or string Internal point)
             // e.g. "My XIOT Devices.88AC1A.S1State"
             // The "time" field (UTC) will be used to set the point's PresetTimestamp
@@ -295,18 +306,14 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
 
             // Define the group reference 
             ClearScada.Client.Simple.DBObject myGroup;
-            string tagname = TagBase + "." + station;
+            string tagname = TagBase + "." + device;
 
             // Find a group object which could contain the points
             myGroup = connection.GetObject(tagname);
             if (myGroup == null)
 			{
-                tagname = TagBase + "." + device;
-                myGroup = connection.GetObject(tagname);
-            }
-            if (myGroup == null)
-			{
-                Console.WriteLine($"Cannot find group {TagBase + "." + station} or {TagBase + "." + device}");
+                // Set breakpoints here to find device groups not in the database
+                Console.WriteLine($"*** Cannot find group {TagBase + "." + device}");
                 return;
 			}
             if (!((string)myGroup["TypeName"] == "CGroup") && !((string)myGroup["TypeName"] == "CTemplateInstance"))
@@ -341,7 +348,14 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
                                 Value = prop.GetValue(Tag).ToString();
                             }
                             Console.WriteLine($"Try to set point {PointObject.FullName} to value {Value} at time {time}");
-                            TrySetPointValue(PointObject, Value, MessageTime);
+                            try
+                            {
+                                TrySetPointValue(PointObject, Value, MessageTime);
+                            }
+                            catch (Exception e)
+							{
+                                Console.WriteLine("Exception writing point data: " + e.Message);
+							}
 						}
 					}
                 }
@@ -364,7 +378,7 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
                         if (IntValue < 8)
                         {
                             PointObject["PresetTimestamp"] = MessageTime;
-                            PointObject.InvokeMethod("CurrentValue", IntValue);
+                            PointObject.InvokeMethod("CurrentState", IntValue);
                         }
                     }
                     else
@@ -413,26 +427,32 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
         static void Main(string[] args)
         {
             //setting Up the Queue Connection
-            SetUpQueueConnection();
+            if (!SetUpQueueConnection())
+			{
+                return;
+			}
             //setting Up the Wonderware Historian Connection
-            SetUpGeoSCADAConnection();
+            if (!SetUpGeoSCADAConnection())
+			{
+                return;
+			}
+
             //Consume the message
             Consume().GetAwaiter().GetResult();
+
             //Closing the Queue Connection
             CloseQueueConnection();
             //Closing the Geo SCADA Connection
             CloseGeoSCADAConnection();
-
         }
 
         #endregion
-
     }
 
     /// <summary>
-    /// TAGModel : Model class for Tag
+    /// TAGModel : Model classes for Tag
     /// </summary>
-    class TAGModel
+    class TAGModel64
     {
         public string device { get; set; }
         public string time { get; set; }
@@ -469,6 +489,38 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
         public string S4State { get; set; }
         public string S1OpenCnt { get; set; }
         public string S2OpenCnt { get; set; }
+        public string S3OpenCnt { get; set; }
+        public string S4OpenCnt { get; set; }
 
+    }
+    class TAGModel48
+    {
+        public string device { get; set; }
+        public string time { get; set; }
+        public string avgSnr { get; set; }
+        public string duplicate { get; set; }
+        public string snr { get; set; }
+        public string station { get; set; }
+        public string lat { get; set; }
+        public string lng { get; set; }
+        public string rssi { get; set; }
+        public string seqNumber { get; set; }
+        public string RecordType { get; set; }
+        public string CommandDone { get; set; }
+        public string HWError { get; set; }
+        public string LowBatError { get; set; }
+        public string ConfigOK { get; set; }
+        public string SwitchError { get; set; }
+        public string FrameCnt1 { get; set; }
+        public string FrameCnt2 { get; set; }
+        public string FrameCnt3 { get; set; }
+        public string FrameCnt4 { get; set; }
+    }
+    class TAGModel255
+    {
+        public string device { get; set; }
+        public string lat { get; set; }
+        public string lng { get; set; }
+        public string RecordType { get; set; }
     }
 }
