@@ -30,14 +30,14 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
         const string TagBase = "My XIOT Devices";
 
         // Enter your Geo SCADA user credentials. The user should have Control privilege to write point data
-        const string GeoSCADAuser = "Username";
+        const string GeoSCADAuser = ""; // TYPE YOUR USER NAME FOR ACCESS TO THE DATABASE
         // Your solution should store and retrieve this securely, not using a constant
-        const string GeoSCADApass = "Password";
+        const string GeoSCADApass = ""; // YOUR PASSWORD CAN BE PUT HERE - WE RECOMMEND YOU SECURE THIS WITH YOUR OWN METHODS
         // Geo SCADA server
         const string GeoSCADAnode = "127.0.0.1";
         const int GeoSCADAport = 5481;
 
-        // Set this to the string given to you by the web site
+        // Set this to the string given to you by the web site - NOTE THAT THE STRING BELOW IS NOT VALID, YOU ENTER YOUR OWN TEXT
         const string ServiceBusConnectionString = "Endpoint=sb://dass-test.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=slVnJLa7QXMm8qEc9/pGm3xtrs1wKzf+q3aImwq1iZI=;EntityPath=dass-queue1";
 
         static IQueueClient queueClient;
@@ -72,7 +72,8 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
         static bool SetUpGeoSCADAConnection()
         {
             // The arguments here will specify your server by its IP address and port. These are the defaults for local use.
-            ClearScada.Client.ServerNode node = new ClearScada.Client.ServerNode(ClearScada.Client.ConnectionType.Standard, GeoSCADAnode, GeoSCADAport);
+            // Older Geo SCADA uses param: ClearScada.Client.ConnectionType.Standard
+            ClearScada.Client.ServerNode node = new ClearScada.Client.ServerNode(GeoSCADAnode, GeoSCADAport);
             try
             {
                 connection.Connect(node);
@@ -343,7 +344,9 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
 						{
                             // Get Property value from the JSON structure
                             string Value = "";
-                            if (prop.GetValue(Tag).ToString() != null)
+                            var tagVal = prop.GetValue(Tag);
+                            // First check is in case a json property is missing
+                            if (tagVal != null && tagVal.ToString() != null)
 							{
                                 Value = prop.GetValue(Tag).ToString();
                             }
