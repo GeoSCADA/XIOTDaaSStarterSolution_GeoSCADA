@@ -73,7 +73,8 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
         {
             // The arguments here will specify your server by its IP address and port. These are the defaults for local use.
             // Older Geo SCADA uses param: ClearScada.Client.ConnectionType.Standard
-            ClearScada.Client.ServerNode node = new ClearScada.Client.ServerNode(GeoSCADAnode, GeoSCADAport);
+#pragma warning disable 612, 618
+            ClearScada.Client.ServerNode node = new ClearScada.Client.ServerNode(ConnectionType.Standard, GeoSCADAnode, GeoSCADAport);
             try
             {
                 connection.Connect(node);
@@ -83,6 +84,8 @@ namespace XIOTDaaSStarterSolution_GeoSCADA
                 Console.WriteLine("Unable to communicate with Geo SCADA server.");
                 return false;
             }
+#pragma warning restore 612, 618
+
             if (!connection.IsConnected)
             {
                 Console.WriteLine("Not connected to Geo SCADA server.");
